@@ -1,0 +1,25 @@
+{
+  "id": "document-processing-local-env",
+  "name": "Document Processing - Local Development",
+  "values": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:7071",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "functionRoute",
+      "value": "process-document",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "functionKey",
+      "value": "",
+      "enabled": true,
+      "type": "default"
+    }
+  ],
+  "_postman_variable_scope": "environment"
+}

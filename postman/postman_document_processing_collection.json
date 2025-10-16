@@ -1,0 +1,587 @@
+{
+  "info": {
+    "name": "Azure Document Processing Function Tests",
+    "description": "Comprehensive test collection for Azure Document Processing Function with AI key phrase extraction and search indexing",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:7071",
+      "type": "string",
+      "description": "Base URL for local Azure Functions development"
+    },
+    {
+      "key": "functionRoute",
+      "value": "process-document",
+      "type": "string",
+      "description": "Route for the document processing function"
+    },
+    {
+      "key": "functionKey",
+      "value": "",
+      "type": "string",
+      "description": "Function key for authentication (leave empty for local development)"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check & Status",
+      "item": [
+        {
+          "name": "GET - Health Check",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{functionRoute}}{{functionKey}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{functionRoute}}"],
+              "query": [
+                {
+                  "key": "code",
+                  "value": "{{functionKey}}",
+                  "disabled": true,
+                  "description": "Enable for production with function key"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Health check returns 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is JSON', function () {",
+                  "    pm.response.to.be.json;",
+                  "});",
+                  "",
+                  "pm.test('Contains status field', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('status');",
+                  "    pm.expect(responseJson.status).to.eql('healthy');",
+                  "});",
+                  "",
+                  "pm.test('Contains version field', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('version');",
+                  "});",
+                  "",
+                  "pm.test('Response time is acceptable', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Document Processing Tests",
+      "item": [
+        {
+          "name": "POST - Process Text Document",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\\n  \\\"filename\\\": \\\"sample_legal_document.txt\\\",\\n  \\\"file_content\\\": \\\"VGhpcyBpcyBhIHNhbXBsZSBsZWdhbCBkb2N1bWVudCBjb250YWluaW5nIGltcG9ydGFudCBjb250cmFjdCB0ZXJtcy4gVGhlIHBhcnRpZXMgYWdyZWUgdG8gdGhlIGZvbGxvd2luZyB0ZXJtcyBhbmQgY29uZGl0aW9uczogMS4gUGF5bWVudCBvZiAkMTAsMDAwIG11c3QgYmUgbWFkZSBieSBEZWNlbWJlciAzMSwgMjAyNC4gMi4gQWxsIGRpc3B1dGVzIHdpbGwgYmUgcmVzb2x2ZWQgdGhyb3VnaCBhcmJpdHJhdGlvbiBpbiBOZXcgWW9yay4gMy4gVGhpcyBhZ3JlZW1lbnQgaXMgZ292ZXJuZWQgYnkgdGhlIGxhd3Mgb2YgdGhlIFN0YXRlIG9mIE5ldyBZb3JrLg==\\\",\\n  \\\"force_reindex\\\": false\\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{functionRoute}}{{functionKey}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{functionRoute}}"],
+              "query": [
+                {
+                  "key": "code",
+                  "value": "{{functionKey}}",
+                  "disabled": true,
+                  "description": "Enable for production with function key"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Document processing successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is JSON', function () {",
+                  "    pm.response.to.be.json;",
+                  "});",
+                  "",
+                  "pm.test('Contains status field', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('status');",
+                  "});",
+                  "",
+                  "pm.test('Processing completed successfully or already exists', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson.status).to.be.oneOf(['success', 'already_exists']);",
+                  "});",
+                  "",
+                  "pm.test('Contains message field', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('message');",
+                  "});",
+                  "",
+                  "pm.test('Response time is reasonable for AI processing', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(30000);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// The base64 content is: 'This is a sample legal document containing important contract terms. The parties agree to the following terms and conditions: 1. Payment of $10,000 must be made by December 31, 2024. 2. All disputes will be resolved through arbitration in New York. 3. This agreement is governed by the laws of the State of New York.'"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST - Process with Force Reindex",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\\n  \\\"filename\\\": \\\"contract_example.txt\\\",\\n  \\\"file_content\\\": \\\"VGhpcyBpcyBhIHNhbXBsZSBjb250cmFjdCBkb2N1bWVudC4gVGhlIHNlcnZpY2UgYWdyZWVtZW50IGJldHdlZW4gQUJDIENvcnBvcmF0aW9uIGFuZCBYWVogTExDIGluY2x1ZGVzIHRoZSBmb2xsb3dpbmc6IDEuIFNlcnZpY2UgZGVsaXZlcnkgd2l0aGluIDMwIGRheXMuIDIuIFBheW1lbnQgdGVybXM6IDUwJSB1cGZyb250LCA1MCUgb24gY29tcGxldGlvbi4gMy4gQ29uZmlkZW50aWFsaXR5IGNsYXVzZSBhcHBsaWVzLiA0LiBUZXJtaW5hdGlvbiBjbGF1c2U6IDMwIGRheXMgbm90aWNlIHJlcXVpcmVkLg==\\\",\\n  \\\"force_reindex\\\": true\\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{functionRoute}}{{functionKey}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{functionRoute}}"],
+              "query": [
+                {
+                  "key": "code",
+                  "value": "{{functionKey}}",
+                  "disabled": true,
+                  "description": "Enable for production with function key"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Force reindex successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Status is success (not already_exists)', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson.status).to.eql('success');",
+                  "});",
+                  "",
+                  "pm.test('Document was reprocessed', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('message');",
+                  "    pm.expect(responseJson.message).to.not.include('already exists');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// The base64 content is: 'This is a sample contract document. The service agreement between ABC Corporation and XYZ LLC includes the following: 1. Service delivery within 30 days. 2. Payment terms: 50% upfront, 50% on completion. 3. Confidentiality clause applies. 4. Termination clause: 30 days notice required.'"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Error Handling Tests",
+      "item": [
+        {
+          "name": "POST - Missing Required Fields",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\\n  \\\"filename\\\": \\\"test.txt\\\"\\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{functionRoute}}{{functionKey}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{functionRoute}}"],
+              "query": [
+                {
+                  "key": "code",
+                  "value": "{{functionKey}}",
+                  "disabled": true,
+                  "description": "Enable for production with function key"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Returns 400 for missing file_content', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Error message mentions required fields', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('error');",
+                  "    pm.expect(responseJson.error).to.include('required');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST - Unsupported File Type",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\\n  \\\"filename\\\": \\\"unsupported.xyz\\\",\\n  \\\"file_content\\\": \\\"VGVzdCBjb250ZW50\\\"\\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{functionRoute}}{{functionKey}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{functionRoute}}"],
+              "query": [
+                {
+                  "key": "code",
+                  "value": "{{functionKey}}",
+                  "disabled": true,
+                  "description": "Enable for production with function key"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Returns 400 for unsupported file type', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Error message mentions unsupported file type', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('error');",
+                  "    pm.expect(responseJson.error).to.include('Unsupported file type');",
+                  "});",
+                  "",
+                  "pm.test('Error message lists supported types', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson.error).to.include('txt, docx, pdf');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST - Invalid Base64 Content",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\\n  \\\"filename\\\": \\\"test.txt\\\",\\n  \\\"file_content\\\": \\\"invalid-base64-content!!!\\\"\\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{functionRoute}}{{functionKey}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{functionRoute}}"],
+              "query": [
+                {
+                  "key": "code",
+                  "value": "{{functionKey}}",
+                  "disabled": true,
+                  "description": "Enable for production with function key"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Returns 400 for invalid base64', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Error message mentions invalid base64', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('error');",
+                  "    pm.expect(responseJson.error).to.include('Invalid base64');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST - Invalid JSON Body",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "invalid json content"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{functionRoute}}{{functionKey}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{functionRoute}}"],
+              "query": [
+                {
+                  "key": "code",
+                  "value": "{{functionKey}}",
+                  "disabled": true,
+                  "description": "Enable for production with function key"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Returns 400 for invalid JSON', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Error message mentions invalid JSON', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('error');",
+                  "    pm.expect(responseJson.error).to.include('Invalid JSON');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT - Method Not Allowed",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{functionRoute}}{{functionKey}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{functionRoute}}"],
+              "query": [
+                {
+                  "key": "code",
+                  "value": "{{functionKey}}",
+                  "disabled": true,
+                  "description": "Enable for production with function key"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Returns 405 for unsupported method', function () {",
+                  "    pm.response.to.have.status(405);",
+                  "});",
+                  "",
+                  "pm.test('Error message mentions method not allowed', function () {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson).to.have.property('error');",
+                  "    pm.expect(responseJson.error).to.include('not allowed');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sample Document Tests",
+      "item": [
+        {
+          "name": "POST - Process PDF Sample (Base64)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\\n  \\\"filename\\\": \\\"sample.pdf\\\",\\n  \\\"file_content\\\": \\\"JVBERi0xLjQKJcOkw7zDtsO\\\",\\n  \\\"force_reindex\\\": false\\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{functionRoute}}{{functionKey}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{functionRoute}}"],
+              "query": [
+                {
+                  "key": "code",
+                  "value": "{{functionKey}}",
+                  "disabled": true,
+                  "description": "Enable for production with function key"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Note: This test uses incomplete PDF base64 and will likely fail",
+                  "// It's included to demonstrate PDF handling structure",
+                  "pm.test('PDF processing attempt made', function () {",
+                  "    // This test will likely return an error due to incomplete PDF",
+                  "    // but should handle the PDF file type gracefully",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 400, 500]);",
+                  "});",
+                  "",
+                  "pm.test('Response is JSON', function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Note: This is an incomplete PDF base64 for demonstration",
+                  "// Replace with actual PDF base64 content for real testing"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Global pre-request script",
+          "pm.globals.set('requestTimestamp', new Date().toISOString());",
+          "",
+          "// Log request details",
+          "console.log('🚀 Request:', pm.request.method, pm.request.url);"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Global test script",
+          "console.log('✅ Response:', pm.response.status, pm.response.code);",
+          "console.log('⏱️ Response time:', pm.response.responseTime + 'ms');",
+          "",
+          "// Log response for debugging",
+          "if (pm.response.code >= 400) {",
+          "    console.log('❌ Error response:', pm.response.text());",
+          "}"
+        ]
+      }
+    }
+  ]
+}

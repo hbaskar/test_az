@@ -1,0 +1,22 @@
+# Azure Functions Core Requirements
+azure-functions
+
+# Azure Services - use specific versions to avoid grpc issues
+azure-search-documents
+azure-core>=1.31.0
+
+# OpenAI and AI - pin to avoid grpc dependencies
+openai
+
+# Document Processing
+python-docx
+PyPDF2
+
+# Core Dependencies
+python-dotenv 
+pydantic 
+requests 
+typing-extensions 
+
+# JSON handling
+orjson 

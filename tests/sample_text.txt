@@ -1,0 +1,26 @@
+Test Text Document
+==================
+
+This is a sample text document to test the text extraction functionality.
+
+Introduction
+-----------
+This document demonstrates how the enhanced test runner can properly extract and chunk text content from different file types.
+
+Key Features
+-----------
+1. **PDF Text Extraction**: Uses PyPDF2 to extract actual text content from PDF files
+2. **Smart Chunking**: Handles different file types with appropriate chunking strategies  
+3. **Page-aware Processing**: Preserves page information for PDF documents
+4. **Meaningful Content**: Stores actual readable text instead of binary data
+
+Benefits
+--------
+- Better searchability of document content
+- Improved AI processing with actual text
+- More meaningful chunk analysis
+- Better debugging and inspection capabilities
+
+Conclusion
+----------
+The enhanced text extraction provides much better preprocessing capabilities for document analysis and processing.

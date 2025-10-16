@@ -1,0 +1,19 @@
+EMPLOYMENT AGREEMENT
+    
+    This Employment Agreement is made between TechCorp Inc. ("Employer") 
+    and Sarah Johnson ("Employee") effective January 1, 2025.
+    
+    POSITION: Senior Software Engineer
+    SALARY: $120,000 annually
+    BENEFITS: Health insurance, 401(k) matching, 4 weeks PTO
+    
+    CONFIDENTIALITY: Employee agrees to protect confidential information.
+    NON-COMPETE: 12-month restriction in same industry within 50-mile radius.
+    TERMINATION: Either party may terminate with 2 weeks notice.
+    
+    This agreement is governed by California state law.
+    
+    Signatures:
+    Employer: Michael Chen, CTO
+    Employee: Sarah Johnson
+    Date: December 15, 2024

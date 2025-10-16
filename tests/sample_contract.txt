@@ -1,0 +1,37 @@
+SERVICE AGREEMENT
+    
+    This Service Agreement ("Agreement") is entered into on December 1, 2024, 
+    between ABC Corporation, a Delaware corporation ("Company") and XYZ Consulting LLC, 
+    a New York limited liability company ("Consultant").
+    
+    1. SERVICES
+    Consultant agrees to provide web development services including:
+    - Frontend development using React.js
+    - Backend API development
+    - Database design and implementation
+    - Testing and deployment
+    
+    2. COMPENSATION
+    Company agrees to pay Consultant a total fee of $50,000 for the services, 
+    payable as follows:
+    - 25% ($12,500) upon execution of this Agreement
+    - 50% ($25,000) upon completion of development phase
+    - 25% ($12,500) upon final delivery and acceptance
+    
+    3. TIMELINE
+    Project shall commence on December 15, 2024, and be completed by March 15, 2025.
+    
+    4. CONFIDENTIALITY
+    Both parties agree to maintain confidentiality of proprietary information.
+    
+    5. TERMINATION
+    Either party may terminate this Agreement with 30 days written notice.
+    
+    6. GOVERNING LAW
+    This Agreement shall be governed by the laws of the State of New York.
+    
+    IN WITNESS WHEREOF, the parties have executed this Agreement.
+    
+    ABC Corporation                    XYZ Consulting LLC
+    By: John Smith, CEO               By: Jane Doe, Managing Member
+    Date: December 1, 2024            Date: December 1, 2024

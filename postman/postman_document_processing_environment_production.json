@@ -1,0 +1,25 @@
+{
+  "id": "document-processing-prod-env",
+  "name": "Document Processing - Production",
+  "values": [
+    {
+      "key": "baseUrl",
+      "value": "https://your-function-app.azurewebsites.net",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "functionRoute",
+      "value": "process-document",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "functionKey",
+      "value": "your-function-key-here",
+      "enabled": true,
+      "type": "secret"
+    }
+  ],
+  "_postman_variable_scope": "environment"
+}
