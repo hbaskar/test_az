@@ -20,3 +20,7 @@ typing-extensions
 
 # JSON handling
 orjson 
+
+
+# Azure SQL Database Support
+pyodbc>=4.0.39

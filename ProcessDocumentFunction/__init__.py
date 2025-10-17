@@ -124,6 +124,338 @@ def generate_text_embedding(text: str) -> List[float]:
         logger.error(f"Error generating embedding: {str(e)}")
         return [0.0] * 1536  # Return dummy embedding
 
+def intelligent_chunk_with_openai(document_text: str, document_type: str = "legal", max_chunk_size: int = 1000) -> List[str]:
+    """Use OpenAI to intelligently determine optimal chunk boundaries based on semantic meaning"""
+    
+    # First, let OpenAI analyze the document structure and suggest chunking strategy
+    analysis_prompt = f'''
+You are an expert document analyst. Analyze this {document_type} document and determine the optimal way to break it into semantic chunks.
+
+Consider:
+- Natural topic boundaries
+- Logical flow and coherence  
+- Related concepts that should stay together
+- Legal sections, clauses, or provisions
+- Introductory vs detailed content
+- Maximum chunk size of approximately {max_chunk_size} characters
+
+Document to analyze:
+{document_text[:3000]}{'...' if len(document_text) > 3000 else ''}
+
+Return a JSON object with:
+1. "strategy": brief description of chunking approach
+2. "boundaries": array of character positions where chunks should split (approximate)
+3. "chunk_themes": array of brief themes/topics for each suggested chunk
+
+Example output:
+{{
+    "strategy": "Split by legal sections and related clauses",
+    "boundaries": [0, 500, 1200, 2000],
+    "chunk_themes": ["Introduction and parties", "Payment terms", "Obligations", "Termination clauses"]
+}}
+'''
+
+    try:
+        client = get_openai_client()
+        
+        # Get AI analysis of optimal chunking strategy
+        analysis_response = client.chat.completions.create(
+            model=CONFIG["openai_model_deployment"],
+            messages=[{"role": "user", "content": analysis_prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.1,
+            max_tokens=800,
+            timeout=45  # Longer timeout for analysis
+        )
+        
+        analysis = json.loads(analysis_response.choices[0].message.content)
+        logger.info(f"🧠 AI Chunking Strategy: {analysis.get('strategy', 'Standard approach')}")
+        
+        # Use AI-suggested boundaries to create initial chunks
+        boundaries = analysis.get('boundaries', [])
+        themes = analysis.get('chunk_themes', [])
+        
+        if not boundaries or len(boundaries) < 2:
+            # Fallback to size-based chunking if AI analysis failed
+            boundaries = list(range(0, len(document_text), max_chunk_size))
+            boundaries.append(len(document_text))
+        
+        # Create chunks based on AI-suggested boundaries
+        chunks = []
+        for i in range(len(boundaries) - 1):
+            start = boundaries[i]
+            end = min(boundaries[i + 1], len(document_text))
+            
+            if end > start:
+                raw_chunk = document_text[start:end].strip()
+                
+                # Now use OpenAI to refine and clean up each chunk
+                refinement_prompt = f'''
+You are a document processing expert. Clean up and optimize this text chunk for better readability and completeness.
+
+Tasks:
+1. Ensure the chunk starts and ends at natural sentence boundaries
+2. If the chunk is cut off mid-sentence, either include the complete sentence or exclude the incomplete part
+3. Remove any orphaned fragments
+4. Ensure the chunk is coherent and self-contained
+5. Preserve important formatting and structure
+
+Theme for this chunk: {themes[i] if i < len(themes) else 'General content'}
+
+Original chunk:
+{raw_chunk}
+
+Return ONLY the cleaned, optimized chunk text with no additional formatting or explanations.
+'''
+
+                try:
+                    refinement_response = client.chat.completions.create(
+                        model=CONFIG["openai_model_deployment"],
+                        messages=[{"role": "user", "content": refinement_prompt}],
+                        temperature=0.1,
+                        max_tokens=min(1500, len(raw_chunk) + 200),
+                        timeout=30  # Add timeout to prevent hanging
+                    )
+                    
+                    refined_chunk = refinement_response.choices[0].message.content.strip()
+                    
+                    # Validation: ensure the refined chunk is reasonable
+                    if (len(refined_chunk) > 50 and 
+                        len(refined_chunk) <= max_chunk_size * 1.2 and
+                        not refined_chunk.startswith("I ") and  # Avoid AI meta-responses
+                        not refined_chunk.startswith("The chunk")):
+                        chunks.append(refined_chunk)
+                    else:
+                        # Use original chunk if refinement failed
+                        chunks.append(raw_chunk)
+                        
+                except Exception as e:
+                    logger.warning(f"Chunk refinement failed: {e}, using original")
+                    chunks.append(raw_chunk)
+        
+        # Final validation and cleanup
+        final_chunks = []
+        for chunk in chunks:
+            if len(chunk.strip()) > 50:  # Minimum meaningful chunk size
+                final_chunks.append(chunk.strip())
+        
+        logger.info(f"✅ AI Intelligent Chunking: {len(final_chunks)} semantic chunks created")
+        return final_chunks
+        
+    except Exception as e:
+        logger.error(f"Error in intelligent chunking: {str(e)}")
+        # Fallback to sentence-based chunking
+        return fallback_sentence_chunking(document_text, max_chunk_size)
+
+def fallback_sentence_chunking(document_text: str, max_chunk_size: int = 1000) -> List[str]:
+    """Fallback method: Split by sentences when AI chunking fails"""
+    import re
+    
+    # Split into sentences
+    sentences = re.split(r'(?<=[.!?])\s+', document_text)
+    
+    chunks = []
+    current_chunk = []
+    current_size = 0
+    
+    for sentence in sentences:
+        sentence = sentence.strip()
+        if not sentence:
+            continue
+            
+        if current_size + len(sentence) > max_chunk_size and current_chunk:
+            chunks.append(' '.join(current_chunk))
+            current_chunk = [sentence]
+            current_size = len(sentence)
+        else:
+            current_chunk.append(sentence)
+            current_size += len(sentence) + 1  # +1 for space
+    
+    if current_chunk:
+        chunks.append(' '.join(current_chunk))
+    
+    # Validate content preservation (returns metrics but we don't need them here)
+    validate_content_preservation(document_text, chunks, "sentence-based chunking")
+    
+    return chunks
+
+def validate_content_preservation(original_text: str, chunks: List[str], method_name: str) -> Dict[str, Any]:
+    """Validate that chunking preserves all content without loss or duplication"""
+    
+    # Calculate original content metrics
+    original_length = len(original_text)
+    original_words = len(original_text.split())
+    
+    # Calculate chunked content metrics  
+    combined_chunks = ' '.join(chunks)
+    combined_length = len(combined_chunks)
+    combined_words = len(combined_chunks.split())
+    
+    # Calculate content preservation ratio
+    length_ratio = combined_length / original_length if original_length > 0 else 0
+    word_ratio = combined_words / original_words if original_words > 0 else 0
+    
+    # Additional validation: Check for significant content overlap or gaps
+    total_chunk_chars = sum(len(chunk) for chunk in chunks)
+    
+    # Log validation results
+    logger.info(f"📊 Content Validation for {method_name}:")
+    logger.info(f"   Original: {original_length:,} chars, {original_words:,} words")
+    logger.info(f"   Chunked:  {combined_length:,} chars, {combined_words:,} words")
+    logger.info(f"   Individual chunks total: {total_chunk_chars:,} chars")
+    logger.info(f"   Preservation: {length_ratio:.1%} chars, {word_ratio:.1%} words")
+    
+    # Check for content integrity issues
+    issues = []
+    
+    # Check for significant content loss (allow 5% variance for whitespace/formatting)
+    if length_ratio < 0.95:
+        issues.append(f"Content loss: {original_length - combined_length} chars missing")
+    
+    # Check for unexpected content expansion (potential duplication)
+    if length_ratio > 1.10:
+        issues.append(f"Content expansion: {combined_length - original_length} extra chars")
+    
+    # Check for empty chunks
+    empty_chunks = [i for i, chunk in enumerate(chunks) if not chunk.strip()]
+    if empty_chunks:
+        issues.append(f"Empty chunks found at positions: {empty_chunks}")
+    
+    # Determine validation result
+    validation_passed = len(issues) == 0
+    acceptable = length_ratio >= 0.90 and length_ratio <= 1.15
+    
+    # Log results
+    if validation_passed:
+        logger.info(f"✅ Content preservation validated for {method_name}")
+    else:
+        logger.warning(f"⚠️ Content integrity issues detected in {method_name}:")
+        for issue in issues:
+            logger.warning(f"   - {issue}")
+        
+        if acceptable:
+            logger.info(f"📋 Issues within acceptable range for {method_name}")
+    
+    # Return detailed validation metrics
+    return {
+        "method": method_name,
+        "original_chars": original_length,
+        "original_words": original_words,
+        "chunked_chars": combined_length,
+        "chunked_words": combined_words,
+        "total_chunk_chars": total_chunk_chars,
+        "char_preservation_ratio": round(length_ratio, 3),
+        "word_preservation_ratio": round(word_ratio, 3),
+        "validation_passed": validation_passed,
+        "acceptable": acceptable,
+        "issues": issues,
+        "chunks_count": len(chunks)
+    }
+
+def heading_based_chunking(document_text: str) -> List[str]:
+    """Chunk document based on headings and sections"""
+    import re
+    
+    # Split document into lines for analysis
+    lines = document_text.split('\n')
+    chunks = []
+    current_chunk_lines = []
+    
+    # Patterns to detect headings and sections
+    heading_patterns = [
+        # Numbered sections: "1.", "1.1", "2.3.4", etc.
+        re.compile(r'^\s*(\d+\.)+\s*[A-Z]'),
+        # ALL CAPS headings (minimum 3 words, not too long)
+        re.compile(r'^\s*[A-Z][A-Z\s]{10,80}[A-Z]\s*$'),
+        # Roman numerals: "I.", "II.", "III.", etc.
+        re.compile(r'^\s*[IVX]+\.\s*[A-Z]'),
+        # Letters: "A.", "B.", "(a)", "(b)", etc.
+        re.compile(r'^\s*\(?[A-Za-z]\)?\.\s*[A-Z]'),
+        # Section keywords
+        re.compile(r'^\s*(SECTION|ARTICLE|CHAPTER|PART|EXHIBIT)\s+\d+', re.IGNORECASE),
+        # Legal document patterns
+        re.compile(r'^\s*(WHEREAS|NOW THEREFORE|IN WITNESS WHEREOF)', re.IGNORECASE),
+    ]
+    
+    def is_heading(line: str) -> bool:
+        """Check if a line is likely a heading"""
+        line = line.strip()
+        
+        # Skip empty lines
+        if not line:
+            return False
+            
+        # Skip very long lines (likely paragraph text)
+        if len(line) > 100:
+            return False
+            
+        # Check against heading patterns
+        for pattern in heading_patterns:
+            if pattern.match(line):
+                return True
+                
+        # Additional heuristics for headings
+        # Short lines that are mostly uppercase
+        if len(line) < 50 and len([c for c in line if c.isupper()]) > len(line) * 0.7:
+            return True
+            
+        return False
+    
+    def should_start_new_chunk(line: str, current_chunk_lines: List[str]) -> bool:
+        """Determine if we should start a new chunk"""
+        # Always start new chunk on headings
+        if is_heading(line):
+            return True
+            
+        # Don't split if current chunk is too small (less than 200 chars)
+        current_size = sum(len(l) for l in current_chunk_lines)
+        if current_size < 200:
+            return False
+            
+        # Don't split if current chunk would be too large (more than 2000 chars)
+        if current_size > 2000:
+            return True
+            
+        return False
+    
+    logger.info(f"📋 Processing {len(lines)} lines for heading-based chunking")
+    
+    for i, line in enumerate(lines):
+        line = line.strip()
+        
+        # Skip completely empty lines at chunk boundaries
+        if not line and not current_chunk_lines:
+            continue
+            
+        # Check if we should start a new chunk
+        if current_chunk_lines and should_start_new_chunk(line, current_chunk_lines):
+            # Finalize current chunk
+            chunk_text = '\n'.join(current_chunk_lines).strip()
+            if chunk_text:
+                chunks.append(chunk_text)
+            current_chunk_lines = []
+        
+        # Add line to current chunk
+        if line:  # Only add non-empty lines
+            current_chunk_lines.append(line)
+    
+    # Add final chunk
+    if current_chunk_lines:
+        chunk_text = '\n'.join(current_chunk_lines).strip()
+        if chunk_text:
+            chunks.append(chunk_text)
+    
+    logger.info(f"✅ Created {len(chunks)} heading-based chunks")
+    
+    # Validate content preservation (returns metrics but we don't need them here)
+    validate_content_preservation(document_text, chunks, "heading-based chunking")
+    
+    # Log chunk details for debugging
+    for i, chunk in enumerate(chunks[:5]):  # Show first 5 chunks
+        logger.info(f"   Chunk {i+1}: {len(chunk)} chars - {chunk[:60]}...")
+    
+    return chunks
+
 def extract_simple_keyphrases(text: str) -> List[str]:
     """Fallback method: Simple keyword extraction"""
     legal_terms = [
@@ -185,7 +517,8 @@ Text to analyze:
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
             temperature=0.2,
-            max_tokens=200
+            max_tokens=200,
+            timeout=30  # Add timeout
         )
         
         result = json.loads(response.choices[0].message.content)
@@ -321,7 +654,7 @@ def delete_document_from_index(filename: str) -> Dict:
         logger.error(f"Error deleting document {filename}: {str(e)}")
         return {"status": "error", "message": str(e)}
 
-def process_document_with_ai_keyphrases(file_path: str, filename: str, force_reindex: bool = False) -> Dict:
+def process_document_with_ai_keyphrases(file_path: str, filename: str, force_reindex: bool = False, chunking_method: str = "intelligent") -> Dict:
     """Enhanced version that uses OpenAI to extract intelligent key phrases"""
     try:
         logger.info(f"🔄 Processing document: {filename}")
@@ -334,37 +667,74 @@ def process_document_with_ai_keyphrases(file_path: str, filename: str, force_rei
         if not document_text:
             return {"status": "error", "message": "Failed to extract document content"}
         
-        paragraphs = document_text.split('\n\n')
-        logger.info(f"✅ Extracted {len(paragraphs)} properly formatted paragraphs")
+        # Step 2: Choose chunking method based on parameter
+        validation_metrics = None
+        if chunking_method == "intelligent":
+            logger.info("🧠 Using OpenAI for intelligent semantic chunking...")
+            chunks = intelligent_chunk_with_openai(document_text, "legal", max_chunk_size=1200)
+            logger.info(f"✅ Created {len(chunks)} intelligent semantic chunks")
+            chunk_method_used = "AI_semantic_analysis"
+            enhancement_type = "OpenAI_intelligent_chunking_with_semantic_boundaries"
+            validation_metrics = validate_content_preservation(document_text, chunks, "intelligent chunking")
+        elif chunking_method == "heading":
+            logger.info("📋 Using heading-based structural chunking...")
+            chunks = heading_based_chunking(document_text)
+            logger.info(f"✅ Created {len(chunks)} heading-based chunks")
+            chunk_method_used = "heading_based_chunking"
+            enhancement_type = "structural_heading_chunking"
+            validation_metrics = validate_content_preservation(document_text, chunks, "heading-based chunking")
+        else:  # basic or sentence-based
+            logger.info("📝 Using basic sentence-based chunking...")
+            chunks = fallback_sentence_chunking(document_text, max_chunk_size=500)  # Smaller chunks for more chunks
+            logger.info(f"✅ Created {len(chunks)} sentence-based chunks")
+            chunk_method_used = "sentence_based_chunking"
+            enhancement_type = "basic_sentence_chunking"
+            validation_metrics = validate_content_preservation(document_text, chunks, "sentence-based chunking")
         
-        # Step 2: Create enhanced chunks with AI key phrase extraction
+        # Step 3: Create enhanced chunks with AI key phrase extraction
         logger.info("🧠 Creating chunks with AI-powered key phrase extraction...")
         documents = []
         base_key = sanitize_document_key(filename)
         
-        for i, para in enumerate(paragraphs, 1):
-            if len(para.strip()) > 50:  # Only meaningful paragraphs
-                logger.info(f"📝 Processing chunk {i}/{len(paragraphs)}...")
+        for i, chunk_text in enumerate(chunks, 1):
+            if len(chunk_text.strip()) > 50:  # Only meaningful chunks
+                logger.info(f"📝 Processing chunk {i}/{len(chunks)}...")
                 
                 # Generate AI-powered key phrases
-                keyphrases = extract_keyphrases_with_openai(para, "legal")
+                keyphrases = extract_keyphrases_with_openai(chunk_text, "legal")
                 
                 # Generate embedding
-                embedding = generate_text_embedding(para)
+                embedding = generate_text_embedding(chunk_text)
                 
-                # Create enhanced summary
-                sentences = para.split('. ')
-                summary = sentences[0] + "." if len(sentences) > 1 else para[:100] + "..."
+                # Create enhanced summary using OpenAI
+                summary_prompt = f"Create a concise 1-2 sentence summary of this legal text: {chunk_text[:500]}..."
+                try:
+                    client = get_openai_client()
+                    summary_response = client.chat.completions.create(
+                        model=CONFIG["openai_model_deployment"],
+                        messages=[{"role": "user", "content": summary_prompt}],
+                        max_tokens=100,
+                        temperature=0.1,
+                        timeout=20
+                    )
+                    ai_summary = summary_response.choices[0].message.content.strip()
+                    summary = ai_summary if ai_summary else chunk_text[:100] + "..."
+                except Exception as e:
+                    logger.warning(f"Failed to generate AI summary: {e}")
+                    # Fallback summary
+                    sentences = chunk_text.split('. ')
+                    summary = sentences[0] + "." if len(sentences) > 1 else chunk_text[:100] + "..."
                 
-                # Create descriptive title
-                title_prompt = f"Create a short descriptive title (3-6 words) for this legal text: {para[:200]}..."
+                # Create descriptive title using OpenAI
+                title_prompt = f"Create a short descriptive title (3-6 words) for this legal text: {chunk_text[:200]}..."
                 try:
                     client = get_openai_client()
                     title_response = client.chat.completions.create(
                         model=CONFIG["openai_model_deployment"],
                         messages=[{"role": "user", "content": title_prompt}],
                         max_tokens=20,
-                        temperature=0.1
+                        temperature=0.1,
+                        timeout=20
                     )
                     ai_title = title_response.choices[0].message.content.strip().strip('"')
                     title = ai_title if ai_title else f"Section {i}"
@@ -376,7 +746,7 @@ def process_document_with_ai_keyphrases(file_path: str, filename: str, force_rei
                 document = {
                     "id": f"{base_key}_{i}",
                     "title": title,
-                    "paragraph": para.strip(),
+                    "paragraph": chunk_text.strip(),
                     "summary": summary,
                     "keyphrases": keyphrases,
                     "filename": filename,
@@ -393,7 +763,7 @@ def process_document_with_ai_keyphrases(file_path: str, filename: str, force_rei
                 }
                 documents.append(document)
         
-        logger.info(f"✅ Created {len(documents)} enhanced chunks with AI key phrases")
+        logger.info(f"✅ Created {len(documents)} AI-enhanced chunks with intelligent boundaries")
         
         # Step 3: Handle reindexing
         if force_reindex:
@@ -410,14 +780,14 @@ def process_document_with_ai_keyphrases(file_path: str, filename: str, force_rei
         successful_uploads = sum(1 for r in result if r.succeeded)
         failed_uploads = len(result) - successful_uploads
         
-        # Prepare chunk details for response (without embeddings to reduce size)
+        # Prepare chunk details for response (full content included)
         chunk_details = []
         for i, doc in enumerate(documents):
             upload_result = result[i] if i < len(result) else None
             chunk_details.append({
                 "chunk_id": doc["id"],
                 "title": doc["title"],
-                "content": doc["paragraph"][:500] + "..." if len(doc["paragraph"]) > 500 else doc["paragraph"],
+                "content": doc["paragraph"].strip(),  # Full content without truncation
                 "content_size": len(doc["paragraph"]),
                 "keyphrases": doc["keyphrases"],
                 "status": "success" if (upload_result and upload_result.succeeded) else "failed",
@@ -426,13 +796,15 @@ def process_document_with_ai_keyphrases(file_path: str, filename: str, force_rei
         
         return {
             "status": "success",
-            "message": f"Successfully processed {filename} with AI key phrases",
+            "message": f"Successfully processed {filename} with {chunking_method} chunking",
             "filename": filename,
             "chunks_created": len(documents),
             "successful_uploads": successful_uploads,
             "failed_uploads": failed_uploads,
-            "enhancement": "AI_keyphrases_and_titles",
-            "chunk_details": chunk_details
+            "enhancement": enhancement_type,
+            "chunking_method": chunk_method_used,
+            "chunk_details": chunk_details,
+            "content_validation": validation_metrics
         }
         
     except Exception as e:
@@ -481,6 +853,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             file_content = req_body.get('file_content')  # Base64 encoded file
             filename = req_body.get('filename')
             force_reindex = req_body.get('force_reindex', False)
+            chunking_method = req_body.get('chunking_method', 'intelligent')  # 'intelligent', 'heading', or 'basic'
             
             if not file_content or not filename:
                 return func.HttpResponse(
@@ -522,7 +895,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                 result = process_document_with_ai_keyphrases(
                     file_path=temp_file_path,
                     filename=filename,
-                    force_reindex=force_reindex
+                    force_reindex=force_reindex,
+                    chunking_method=chunking_method
                 )
                 
                 return func.HttpResponse(

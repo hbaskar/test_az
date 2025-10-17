@@ -608,6 +608,34 @@ class ChunkDatabaseManager:
                 for row in results
             ]
 
+    def get_database_stats(self) -> Dict:
+        """Get overall database statistics"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            
+            # Get document count
+            cursor.execute("SELECT COUNT(*) FROM documents")
+            doc_count = cursor.fetchone()[0]
+            
+            # Get preprocessing chunk count (SQLite uses 'chunks' table)
+            cursor.execute("SELECT COUNT(*) FROM chunks")
+            chunk_count = cursor.fetchone()[0]
+            
+            # Get processing session count
+            cursor.execute("SELECT COUNT(*) FROM processing_sessions")
+            session_count = cursor.fetchone()[0]
+            
+            # Get Azure Function chunk count
+            cursor.execute("SELECT COUNT(*) FROM azure_function_chunks")
+            azure_chunk_count = cursor.fetchone()[0]
+            
+            return {
+                'documents': doc_count,
+                'preprocessing_chunks': chunk_count,
+                'processing_sessions': session_count,
+                'azure_function_chunks': azure_chunk_count
+            }
+
 class AzureFunctionTester:
     """Enhanced Azure Function testing class with comprehensive capabilities"""
     
@@ -1097,7 +1125,7 @@ class AzureFunctionTester:
             return None
     
     def test_document_processing(self, file_path: Optional[str] = None, 
-                               force_reindex: bool = False) -> bool:
+                               force_reindex: bool = False, chunking_method: str = "intelligent") -> bool:
         """Test document processing endpoint with preprocessing"""
         print(f"📄 Testing Document Processing...")
         
@@ -1145,7 +1173,8 @@ class AzureFunctionTester:
         payload = {
             "filename": os.path.basename(file_path),
             "file_content": file_content,
-            "force_reindex": force_reindex
+            "force_reindex": force_reindex,
+            "chunking_method": chunking_method
         }
         
         try:
@@ -1358,7 +1387,7 @@ Azure platform capabilities.
         return file_path
     
     def test_employee_pdf(self) -> bool:
-        """Test processing employee.pdf file"""
+        """Test processing employee.pdf file with heading-based chunking"""
         print("📚 Testing Employee PDF Processing...")
         
         pdf_path = "employee.pdf"
@@ -1367,8 +1396,20 @@ Azure platform capabilities.
             self.log_info("Make sure employee.pdf exists in the tests directory")
             return False
         
-        return self.test_document_processing(pdf_path, force_reindex=True)
+        return self.test_document_processing(pdf_path, force_reindex=True, chunking_method="heading")
     
+    def test_employee_pdf_basic(self) -> bool:
+        """Test processing employee.pdf file with basic sentence chunking (for comparison)"""
+        print("📚 Testing Employee PDF Processing (Basic Sentence Chunking)...")
+        
+        pdf_path = "employee.pdf"
+        if not os.path.exists(pdf_path):
+            self.log_error(f"Employee PDF not found: {pdf_path}")
+            self.log_info("Make sure employee.pdf exists in the tests directory")
+            return False
+        
+        return self.test_document_processing(pdf_path, force_reindex=True, chunking_method="basic")
+
     def test_employee_pdf_with_retry(self, max_retries: int = 3) -> bool:
         """Test employee PDF processing with retry logic"""
         print(f"📚 Testing Employee PDF with Retry Logic (max {max_retries} attempts)...")

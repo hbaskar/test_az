@@ -1,0 +1,16 @@
+
+
+# Multi-Database Test Runner Requirements
+# =====================================
+
+# Core dependencies (already in main requirements.txt)
+requests
+PyPDF2
+python-dotenv
+
+# Azure SQL Database Support
+pyodbc>=4.0.39
+
+# Optional: Alternative Azure SQL drivers
+# azure-identity  # For Azure AD authentication
+# azure-keyvault-secrets  # For Key Vault integration

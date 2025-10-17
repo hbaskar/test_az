@@ -1,0 +1,13 @@
+azure-functions>=1.18.0
+azure-functions-worker>=4.0.0
+azure-storage-blob>=12.19.0
+azure-cosmos>=4.5.1
+azure-identity>=1.15.0
+sendgrid>=6.11.0
+python-docx>=1.1.0
+PyPDF2>=3.0.1
+python-dateutil>=2.8.2
+requests>=2.31.0
+pydantic>=2.5.0
+sqlalchemy>=2.0.23
+pymongo>=4.6.1

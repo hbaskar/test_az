@@ -1,0 +1,79 @@
+SAMPLE LEGAL EMPLOYMENT AGREEMENT
+
+This Employment Agreement (the "Agreement") is entered into on January 15, 2024, between Acme Corporation, a Delaware corporation (the "Company"), and John Smith, an individual (the "Employee").
+
+RECITALS
+
+WHEREAS, the Company desires to employ the Employee in the capacity of Senior Software Engineer; and
+
+WHEREAS, the Employee desires to be employed by the Company in such capacity and is willing to accept such employment subject to the terms and conditions set forth herein.
+
+NOW, THEREFORE, in consideration of the mutual covenants and agreements contained herein, and for other good and valuable consideration, the receipt and sufficiency of which are hereby acknowledged, the parties agree as follows:
+
+1. EMPLOYMENT AND DUTIES
+
+The Company hereby employs the Employee, and the Employee hereby accepts employment with the Company, subject to the terms and conditions of this Agreement.
+
+The Employee shall serve as Senior Software Engineer and shall perform such duties as are customarily associated with such position and such other duties as may be assigned by the Company from time to time.
+
+The Employee agrees to devote his full business time, attention, and energies to the performance of his duties hereunder and shall not engage in any other business or occupation during the term of this Agreement without the prior written consent of the Company.
+
+2. COMPENSATION
+
+Base Salary: The Company shall pay the Employee a base salary of $120,000 per year, payable in accordance with the Company's standard payroll practices.
+
+Bonus: The Employee shall be eligible for an annual performance bonus of up to 20% of base salary, based on achievement of performance goals to be established by the Company.
+
+Benefits: The Employee shall be entitled to participate in all employee benefit plans and programs maintained by the Company for its employees, including health insurance, dental insurance, vision insurance, 401(k) plan, and paid time off.
+
+3. TERM
+
+This Agreement shall commence on February 1, 2024, and shall continue for a period of two (2) years, unless earlier terminated in accordance with the provisions hereof.
+
+The Agreement may be renewed for additional periods upon mutual written agreement of the parties.
+
+4. TERMINATION
+
+The Company may terminate this Agreement at any time with or without cause upon thirty (30) days' written notice to the Employee.
+
+The Employee may terminate this Agreement at any time upon sixty (60) days' written notice to the Company.
+
+Upon termination, the Employee shall be entitled to receive any accrued but unpaid salary and benefits through the date of termination.
+
+5. CONFIDENTIALITY
+
+The Employee acknowledges that during the course of employment, he will have access to confidential and proprietary information of the Company.
+
+The Employee agrees to maintain the confidentiality of all such information during and after the term of employment.
+
+The Employee shall not disclose, use, or permit the use of any confidential information except as required in the performance of his duties hereunder.
+
+6. NON-COMPETE
+
+During the term of this Agreement and for a period of one (1) year following termination, the Employee shall not directly or indirectly engage in any business that competes with the Company.
+
+This restriction shall apply within a fifty (50) mile radius of the Company's principal place of business.
+
+The Employee acknowledges that the restrictions contained herein are reasonable and necessary to protect the legitimate business interests of the Company.
+
+7. GOVERNING LAW
+
+This Agreement shall be governed by and construed in accordance with the laws of the State of Delaware.
+
+Any disputes arising under this Agreement shall be resolved through binding arbitration in accordance with the rules of the American Arbitration Association.
+
+8. ENTIRE AGREEMENT
+
+This Agreement constitutes the entire agreement between the parties and supersedes all prior negotiations, representations, or agreements relating to the subject matter hereof.
+
+This Agreement may not be amended except by written agreement signed by both parties.
+
+IN WITNESS WHEREOF, the parties have executed this Agreement as of the date first written above.
+
+COMPANY:                           EMPLOYEE:
+
+Acme Corporation                   John Smith
+
+By: _____________________         _____________________
+Name: Jane Doe                    John Smith
+Title: Chief Executive Officer    Date: January 15, 2024
